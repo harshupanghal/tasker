@@ -1,5 +1,7 @@
 ﻿using Tasker.Domain.Entities; 
 
+// interface for task related functions
+
 namespace Tasker.Application.Interfaces;
 public interface ITaskRepository 
 {

@@ -28,12 +28,6 @@ public class TasksController : ControllerBase
         _deleteTaskUseCase = deleteTaskUseCase;
     }
 
-   
-    private int GetCurrentUserId()
-    {
-        throw new NotImplementedException("GetCurrentUserId should be replaced with actual authentication context.");
-    }
-
 
     // POST /api/Tasks
     [HttpPost]

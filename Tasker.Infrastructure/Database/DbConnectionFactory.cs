@@ -1,8 +1,10 @@
 ﻿using Microsoft.Data.SqlClient; 
-using System.Data; 
+using System.Data;
+
+// this program helps to connect our application with database.
 
 namespace Tasker.Infrastructure.Database
-{ 
+{
     public class DbConnectionFactory
     {
         private readonly string _connectionString;
@@ -13,9 +15,16 @@ namespace Tasker.Infrastructure.Database
         }
         public IDbConnection CreateConnection()
         {
-            var connection = new SqlConnection(_connectionString);
-            connection.Open();
-            return connection;
+            try {
+
+                var connection = new SqlConnection(_connectionString);
+                connection.Open();
+                return connection;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Could not create a database connection.", ex);
+            }
         }
     }
 }

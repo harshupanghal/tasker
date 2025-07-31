@@ -19,41 +19,57 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async System.Threading.Tasks.Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
+        try
+            {
 
-        var response = await _authService.RegisterAsync(request);
+            if (!ModelState.IsValid)
+                {
+                return BadRequest(ModelState);
+                }
 
-        if (response.Success)
-        {
-            return Ok(response);
+            var response = await _authService.RegisterAsync(request);
+
+            if (response.Success)
+                {
+                return Ok(response);
+                }
+            else
+                {
+                return BadRequest(response);
+                }
+            }
+        catch (Exception ex) {
+            throw new InvalidOperationException("Something went wrong", ex);
+
+            }
         }
-        else
-        {
-            return BadRequest(response);
-        }
-    }
 
     // POST /api/Auth/login
     [HttpPost("login")]
     public async System.Threading.Tasks.Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
+        try
+            {
 
-        var response = await _authService.LoginAsync(request);
+            if (!ModelState.IsValid)
+                {
+                return BadRequest(ModelState);
+                }
 
-        if (response.Success)
-        {
-            return Ok(response);
-        }
-        else
-        {
-            return Unauthorized(response); 
-        }
+            var response = await _authService.LoginAsync(request);
+
+            if (response.Success)
+                {
+                return Ok(response);
+                }
+            else
+                {
+                return Unauthorized(response);
+                }
+            }
+        catch (Exception ex)
+            {
+            throw new InvalidOperationException("Something went wrong", ex);
+            }
     }
 }
