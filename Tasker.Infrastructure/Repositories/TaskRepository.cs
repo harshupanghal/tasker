@@ -1,120 +1,102 @@
-﻿using Dapper;
+﻿using Microsoft.EntityFrameworkCore;
 using Tasker.Application.Interfaces;
-using Tasker.Infrastructure.Database;
+using Tasker.Domain.Entities;
+using Tasker.Infrastructure.Persistence;
 
-// using the following functions (for TASKS) , we are interacting with database.
-// Doing all the db and third party calls here
+namespace Tasker.Infrastructure.Repositories;
 
-namespace Tasker.Infrastructure.Repositories
-{
-
-    public class TaskRepository : ITaskRepository
+public class TaskRepository : ITaskRepository
     {
-        private readonly DbConnectionFactory _connectionFactory;
+    private readonly AppDbContext _context;
 
-        public TaskRepository(DbConnectionFactory connectionFactory)
+    public TaskRepository(AppDbContext context)
         {
-            _connectionFactory = connectionFactory;
+        _context = context;
         }
 
-        public async System.Threading.Tasks.Task<int> AddTaskAsync(Tasker.Domain.Entities.Task task)
+    public async Task<int> AddTaskAsync(Domain.Entities.Task task)
         {
-            var sql = @"
-                INSERT INTO Tasks (Title, Description, IsCompleted, UserId, CreatedAt, UpdatedAt)
-                VALUES (@Title, @Description, @IsCompleted, @UserId, @CreatedAt, @UpdatedAt);
-                SELECT SCOPE_IDENTITY();";
-
-            try
+        try
             {
-                using (var connection = _connectionFactory.CreateConnection())
-                {
-
-                    var id = await connection.ExecuteScalarAsync<int>(sql, task);
-                    return id;
-                }
+            _context.Tasks.Add(task);
+            await _context.SaveChangesAsync();
+            return task.Id;
             }
-            catch (Exception ex)
+        catch (Exception ex)
             {
-                throw new InvalidOperationException("Could not add task to the database.", ex);
-
+            throw new InvalidOperationException("Could not add task to the database.", ex);
             }
         }
 
-        public async System.Threading.Tasks.Task<IEnumerable<Tasker.Domain.Entities.Task>> GetTasksByUserIdAsync(int userId)
+    public async Task<IEnumerable<Domain.Entities.Task>> GetTasksByUserIdAsync(int userId)
         {
-            var sql = "SELECT Id, Title, Description, IsCompleted, UserId, CreatedAt, UpdatedAt FROM Tasks WHERE UserId = @UserId;";
-            try
+        try
             {
-                using (var connection = _connectionFactory.CreateConnection())
-                {
-                    return await connection.QueryAsync<Tasker.Domain.Entities.Task>(sql, new { UserId = userId });
-                }
+            return await _context.Tasks
+                .Where(t => t.UserId == userId)
+                .ToListAsync();
             }
-            catch (Exception ex)
+        catch (Exception ex)
             {
-                throw new InvalidOperationException("Could not retrieve user's tasks from the database.", ex);
+            throw new InvalidOperationException("Could not retrieve user's tasks from the database.", ex);
             }
         }
 
-        public async System.Threading.Tasks.Task<Tasker.Domain.Entities.Task?> GetTaskByIdAsync(int taskId, int userId)
+    public async Task<Domain.Entities.Task?> GetTaskByIdAsync(int taskId, int userId)
         {
-            var sql = "SELECT Id, Title, Description, IsCompleted, UserId, CreatedAt, UpdatedAt FROM Tasks WHERE Id = @Id AND UserId = @UserId;";
-            try
+        try
             {
-
-                using (var connection = _connectionFactory.CreateConnection())
-                {
-                    return await connection.QueryFirstOrDefaultAsync<Tasker.Domain.Entities.Task>(sql, new { Id = taskId, UserId = userId });
-                }
+            return await _context.Tasks
+                .FirstOrDefaultAsync(t => t.Id == taskId && t.UserId == userId);
             }
-            catch (Exception ex)
+        catch (Exception ex)
             {
-                throw new InvalidOperationException("Could not get task from the database.", ex);
+            throw new InvalidOperationException("Could not get task from the database.", ex);
             }
-
         }
 
-        public async System.Threading.Tasks.Task<bool> UpdateTaskAsync(Tasker.Domain.Entities.Task task)
+    public async Task<bool> UpdateTaskAsync(Domain.Entities.Task task)
         {
-            var sql = @"
-                UPDATE Tasks
-                SET
-                    Title = @Title,
-                    Description = @Description,            
-                    IsCompleted = @IsCompleted,
-                    UpdatedAt = @UpdatedAt
-                WHERE Id = @Id AND UserId = @UserId;";
-            try
+        try
             {
-                using (var connection = _connectionFactory.CreateConnection())
-                {
-                    var rowsAffected = await connection.ExecuteAsync(sql, task);
-                    return rowsAffected > 0;
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Could not update task in the database.", ex);
-            }
+            var existingTask = await _context.Tasks
+                .FirstOrDefaultAsync(t => t.Id == task.Id && t.UserId == task.UserId);
 
+            if (existingTask == null)
+                return false;
+
+            existingTask.Title = task.Title;
+            existingTask.Description = task.Description;
+            existingTask.IsCompleted = task.IsCompleted;
+            existingTask.UpdatedAt = task.UpdatedAt;
+
+            await _context.SaveChangesAsync();
+            return true;
+            }
+        catch (Exception ex)
+            {
+            throw new InvalidOperationException("Could not update task in the database.", ex);
+            }
         }
 
-        public async System.Threading.Tasks.Task<bool> DeleteTaskAsync(int taskId, int userId)
+    public async Task<bool> DeleteTaskAsync(int taskId, int userId)
         {
-            var sql = "DELETE FROM Tasks WHERE Id = @Id AND UserId = @UserId;";
-            try
+        try
             {
-                using (var connection = _connectionFactory.CreateConnection())
-                {
-                    var rowsAffected = await connection.ExecuteAsync(sql, new { Id = taskId, UserId = userId });
-                    return rowsAffected > 0;
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidOperationException("Could not delete task from the database.", ex);
-            }
+            var task = await _context.Tasks
+                .FirstOrDefaultAsync(t => t.Id == taskId && t.UserId == userId);
 
+            if (task == null)
+                return false;
+
+            _context.Tasks.Remove(task);
+            await _context.SaveChangesAsync();
+            return true;
+            }
+        catch (Exception ex)
+            {
+            throw new InvalidOperationException("Could not delete task from the database.", ex);
+            }
         }
     }
-}
+

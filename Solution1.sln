@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36310.24 d17.14
+VisualStudioVersion = 17.14.36310.24
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tasker.Domain", "Tasker.Domain\Tasker.Domain.csproj", "{6CFA1C97-E97C-4B5C-B7C0-CC11EE259C4F}"
 EndProject
@@ -10,6 +10,13 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tasker.Infrastructure", "Tasker.Infrastructure\Tasker.Infrastructure.csproj", "{D0D1DD15-6E19-45E2-91EE-D7B043ADDDE2}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tasker.WebAPI", "Tasker.WebAPI\Tasker.WebAPI.csproj", "{9F2A8774-7930-4EC9-B462-7431D1859D9B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
+	ProjectSection(SolutionItems) = preProject
+		Readme.md = Readme.md
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tasker.Ui", "Tasker.Ui\Tasker.Ui.csproj", "{F176C741-E174-4E91-8EE7-D68034A67CC9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +40,10 @@ Global
 		{9F2A8774-7930-4EC9-B462-7431D1859D9B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F2A8774-7930-4EC9-B462-7431D1859D9B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9F2A8774-7930-4EC9-B462-7431D1859D9B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F176C741-E174-4E91-8EE7-D68034A67CC9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F176C741-E174-4E91-8EE7-D68034A67CC9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F176C741-E174-4E91-8EE7-D68034A67CC9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F176C741-E174-4E91-8EE7-D68034A67CC9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

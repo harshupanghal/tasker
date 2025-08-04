@@ -1,0 +1,74 @@
+﻿@page "/register"
+@using Tasker.Application.DTOs
+@using Tasker.Application.Interfaces
+@using Tasker.Web.Services
+@inject IAuthService AuthService
+@inject UserSessionService Session
+@inject NavigationManager Navigation
+
+<h3>Register</h3>
+
+@if (!string.IsNullOrEmpty(Error))
+{
+    <div class="alert alert-danger">@Error</div>
+}
+
+<div class="form-group">
+    <input type="text" class="form-control my-2" placeholder="Username" @bind="Username" />
+    <input type="password" class="form-control my-2" placeholder="Password" @bind="Password" />
+    <input type="password" class="form-control my-2" placeholder="Confirm Password" @bind="ConfirmPassword" />
+    <button class="btn btn-success" @onclick="RegisterUser" disabled="@IsLoading">
+        @(IsLoading ? "Registering..." : "Register")
+    </button>
+</div>
+
+@code {
+    private string Username = string.Empty;
+    private string Password = string.Empty;
+    private string ConfirmPassword = string.Empty;
+    private string? Error;
+    private bool IsLoading = false;
+
+    private async Task RegisterUser()
+    {
+        Error = null;
+
+        if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
+        {
+            Error = "Username and password are required.";
+            return;
+        }
+
+        if (Password != ConfirmPassword)
+        {
+            Error = "Passwords do not match.";
+            return;
+        }
+
+        IsLoading = true;
+
+        try
+        {
+            var request = new RegisterRequest { userName = Username, password = Password };
+            var response = await AuthService.RegisterAsync(request);
+
+            if (response.Success)
+            {
+               await Session.SetUserAsync(response.UserId, response.userName);
+                Navigation.NavigateTo("/tasks");
+            }
+            else
+            {
+                Error = response.message ?? "Registration failed.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Error = "Unexpected error: " + ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}

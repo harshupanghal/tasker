@@ -1,0 +1,207 @@
+﻿@page "/tasks"
+
+@using Tasker.Application.DTOs 
+@using Tasker.Application.UseCases.Tasks
+@inject GetTasksForUserUseCase GetTasksForUserUseCase
+@inject DeleteTaskUseCase DeleteTaskUseCase
+@inject NavigationManager NavigationManager
+@inject ILogger<Tasks> Logger
+
+<PageTitle>My Tasks</PageTitle>
+
+<h1>My Tasks</h1>
+
+@if (isLoading)
+{
+    <p><em>Loading tasks...</em></p>
+}
+else if (errorMessage != null)
+{
+    <div class="alert alert-danger" role="alert">
+        Error: @errorMessage
+    </div>
+    <button class="btn btn-primary" @onclick="GoToCreateTask">Create New Task</button>
+}
+else if (tasks == null || !tasks.Any())
+{
+    <p>You currently have no tasks. Start by creating one!</p>
+    <button class="btn btn-primary" @onclick="GoToCreateTask">Create New Task</button>
+}
+else
+{
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Completed</th>
+                <th>Created At</th>
+                <th>Updated At</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var task in tasks)
+            {
+                <tr>
+                    <td>@task.Title</td>
+                    <td>@(string.IsNullOrWhiteSpace(task.Description) ? "N/A" : (task.Description.Length > 50 ? task.Description.Substring(0, 50) + "..." : task.Description))</td>
+                    <td>@(task.IsCompleted ? "Yes" : "No")</td> @* Display IsCompleted *@
+                    <td>@task.CreatedAt.ToShortDateString()</td> @* Display CreatedAt *@
+                    <td>@(task.UpdatedAt.HasValue ? task.UpdatedAt.Value.ToShortDateString() : "N/A")</td> @* Display UpdatedAt *@
+                    <td>
+                        <button class="btn btn-sm btn-info" @onclick="() => ViewTaskDetails(task.Id)">Details</button>
+                        <button class="btn btn-sm btn-warning ms-2" @onclick="() => EditTask(task.Id)">Edit</button>
+                        <button class="btn btn-sm btn-danger ms-2" @onclick="() => ConfirmDelete(task.Id, task.Title)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button class="btn btn-success mt-3" @onclick="GoToCreateTask">Add New Task</button>
+}
+
+@if (showDeleteConfirmation)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the task: "<strong>@taskToDeleteTitle</strong>"?</p>
+                    <p class="text-danger">This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="DeleteTaskConfirmed">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private List<TaskResponse>? tasks; 
+    private bool isLoading = true;
+    private string? errorMessage;
+
+   
+    private int currentUserId = 1; 
+
+    // --- Delete Confirmation State ---
+    private bool showDeleteConfirmation = false;
+    private int taskToDeleteId;
+    private string? taskToDeleteTitle;
+
+    protected override async System.Threading.Tasks.Task OnInitializedAsync()
+    {
+        await LoadTasks();
+    }
+
+    private async System.Threading.Tasks.Task LoadTasks()
+    {
+        isLoading = true;
+        errorMessage = null; // Clear previous errors
+        try
+        {
+            if (currentUserId <= 0)
+            {
+                errorMessage = "Invalid user ID. Cannot load tasks.";
+                return;
+            }
+            // Direct call to the Use Case
+            // Assuming GetTasksForUserUseCase.ExecuteAsync returns IEnumerable<TaskResponse> or List<TaskResponse>
+            tasks = (await GetTasksForUserUseCase.ExecuteAsync(currentUserId)).ToList();
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            errorMessage = "You are not authorized to view these tasks.";
+            Logger.LogWarning(ex, "Unauthorized attempt to load tasks for user {UserId}", currentUserId);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Failed to load tasks. Please try again later.";
+            Logger.LogError(ex, "Error loading tasks for user {UserId}", currentUserId);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ViewTaskDetails(int taskId)
+    {
+        NavigationManager.NavigateTo($"/tasks/{taskId}");
+    }
+
+    private void EditTask(int taskId)
+    {
+        NavigationManager.NavigateTo($"/tasks/edit/{taskId}");
+    }
+
+    private void GoToCreateTask()
+    {
+        NavigationManager.NavigateTo("/tasks/create");
+    }
+
+    private void ConfirmDelete(int taskId, string taskTitle)
+    {
+        taskToDeleteId = taskId;
+        taskToDeleteTitle = taskTitle;
+        showDeleteConfirmation = true;
+    }
+
+    private async System.Threading.Tasks.Task DeleteTaskConfirmed()
+    {
+        showDeleteConfirmation = false;
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            if (currentUserId <= 0)
+            {
+                errorMessage = "Invalid user ID. Cannot delete task.";
+                return;
+            }
+
+            var success = await DeleteTaskUseCase.ExecuteAsync(taskToDeleteId, currentUserId);
+            if (success)
+            {
+                await LoadTasks();
+            }
+            else
+            {
+                errorMessage = "Task not found or you do not have permission to delete it.";
+                Logger.LogWarning("Delete failed: Task {TaskId} not found or not owned by user {UserId}", taskToDeleteId, currentUserId);
+            }
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            errorMessage = "You are not authorized to delete this task.";
+            Logger.LogWarning(ex, "Unauthorized attempt to delete task {TaskId} by user {UserId}", taskToDeleteId, currentUserId);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An error occurred while deleting the task. Please try again.";
+            Logger.LogError(ex, "Error deleting task {TaskId} for user {UserId}", taskToDeleteId, currentUserId);
+        }
+        finally
+        {
+            isLoading = false;
+            taskToDeleteId = 0;
+            taskToDeleteTitle = string.Empty;
+        }
+    }
+
+    private void CancelDelete()
+    {
+        showDeleteConfirmation = false;
+        taskToDeleteId = 0;
+        taskToDeleteTitle = string.Empty;
+    }
+}

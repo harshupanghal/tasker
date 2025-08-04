@@ -1,0 +1,89 @@
+﻿@page "/login"
+@rendermode InteractiveServer
+@using Tasker.Application.DTOs
+@using Tasker.Application.Interfaces
+@using Tasker.WebUI.Services // For CustomAuthenticationStateProvider
+@inject IAuthService AuthService
+@inject NavigationManager NavigationManager
+@inject CustomAuthenticationStateProvider AuthStateProvider // Your custom provider
+@inject ILogger<Login> Logger
+
+<PageTitle>Login</PageTitle>
+
+<div class="card p-4 mx-auto" style="max-width: 400px;">
+    <h3 class="card-title text-center mb-4">Login to Tasker</h3>
+
+    <EditForm Model="@loginRequest" OnValidSubmit="@HandleLogin" FormName="LoginForm">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mb-3" role="alert">
+                @errorMessage
+            </div>
+        }
+
+        <div class="mb-3">
+            <label for="identifier" class="form-label">Username or Email</label>
+            <InputText id="identifier" class="form-control" @bind-Value="loginRequest.Identifier" />
+            <ValidationMessage For="@(() => loginRequest.Identifier)" />
+        </div>
+
+        <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <InputText id="password" type="password" class="form-control" @bind-Value="loginRequest.Password" />
+            <ValidationMessage For="@(() => loginRequest.Password)" />
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Login</button>
+    </EditForm>
+
+    <p class="text-center mt-3">
+        Don't have an account? <a href="/register">Register here</a>
+    </p>
+</div>
+
+@code {
+    private LoginRequest loginRequest = new LoginRequest();
+    private string? errorMessage;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authenticationStateTask;
+        if (authState.User.Identity?.IsAuthenticated == true)
+        {
+            NavigationManager.NavigateTo("/", true); // Redirect to home if already logged in
+        }
+    }
+
+    private async System.Threading.Tasks.Task HandleLogin()
+    {
+        errorMessage = null; // Clear previous errors
+
+        try
+        {
+            var response = await AuthService.LoginAsync(loginRequest);
+
+            if (response.Success && response.UserId.HasValue && !string.IsNullOrEmpty(response.Username))
+            {
+                // Mark the user as authenticated in the AuthenticationStateProvider
+                await AuthStateProvider.MarkUserAsAuthenticated(response.UserId.Value, response.Username);
+
+                NavigationManager.NavigateTo("/", true); // Redirect to home page, force reload to apply auth state
+            }
+            else
+            {
+                errorMessage = response.Message ?? "Login failed. Please check your credentials.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "An unexpected error occurred during login. Please try again.";
+            Logger.LogError(ex, "Login failed for identifier: {Identifier}", loginRequest.Identifier);
+        }
+    }
+}

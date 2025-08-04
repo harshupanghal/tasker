@@ -1,0 +1,91 @@
+﻿@page "/tasks"
+@using Tasker.Application.DTOs
+@using Tasker.Application.UseCases.Tasks
+@inject GetTasksForUserUseCase GetTasksForUserUseCase
+@inject CreateTaskUseCase CreateTaskUseCase
+@inject NavigationManager Navigation
+@inject UserSessionService Session
+
+
+<h3>My Tasks</h3>
+
+@if (!string.IsNullOrEmpty(Error))
+{
+    <div class="alert alert-danger">@Error</div>
+}
+
+@if (UserTasks == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!UserTasks.Any())
+{
+    <p>No tasks found.</p>
+}
+else
+{
+    <ul>
+        @foreach (var task in UserTasks)
+        {
+            <li>@task.Title (@task.Id)</li>
+        }
+    </ul>
+}
+
+<hr />
+<h4>Create New Task</h4>
+<input type="text" @bind="NewTaskTitle" placeholder="Title" />
+<textarea @bind="NewTaskDescription" placeholder="Description"></textarea>
+<br />
+<button class="btn btn-primary" @onclick="CreateNewTask">Create Task</button>
+
+@code {
+    private int UserId = 1; // Replace with session logic later
+    private List<TaskResponse>? UserTasks;
+    private string? NewTaskTitle;
+    private string? NewTaskDescription;
+    private string? Error;
+
+protected override async Task OnInitializedAsync()
+{
+    if (!Session.IsLoggedIn)
+    {
+        Navigation.NavigateTo("/login");
+        return;
+    }
+
+    try
+    {
+        UserTasks = (await GetTasksForUserUseCase.ExecuteAsync(Session.UserId)).ToList();
+    }
+    catch (Exception ex)
+    {
+        Error = "Failed to load tasks: " + ex.Message;
+    }
+}
+
+
+    private async Task CreateNewTask()
+    {
+        if (string.IsNullOrWhiteSpace(NewTaskTitle)) return;
+
+        var request = new CreateTaskRequest
+        {
+            Title = NewTaskTitle,
+            Description = NewTaskDescription
+        };
+
+        try
+        {
+            var newTask = await CreateTaskUseCase.ExecuteAsync(UserId, request);
+            UserTasks?.Add(newTask); // Use null-conditional just in case
+
+            NewTaskTitle = "";
+            NewTaskDescription = "";
+        }
+        catch (Exception ex)
+        {
+            Error = "Failed to create task: " + ex.Message;
+        }
+    }
+}
